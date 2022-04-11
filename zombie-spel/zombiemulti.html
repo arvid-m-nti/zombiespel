@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script src="simple.js">
+        
+        const ctx = canvas.getContext("2d");
+
+        class Zombie
+        {
+            constructor(x, y, speed, damage, health) //constructor för zombiens x, y, speed, damage och healh värden
+            {
+                this.x = x;
+                this.y = y;
+                this.speed = speed;
+                this.damage = damage;
+                this.health = health;
+            }
+            drawZombie(ctx)
+            {
+                // så länge zombien inte är vid väggen så går den till vänster
+                if(this.x > 405){this.x -= this.speed};
+                // zombien skapas som en bild
+                picture(this.x, this.y, "img/zombiepicture40.png")
+
+                //en healthbar som visas ovanför zombien
+                var healthbarWidth = this.health*(25/3); // om man ska ändra zombiens starthälsa så måste man ändra 3an här till det
+                rectangle(this.x+10, this.y-3, 25, 3, "red");
+                rectangle(this.x+10, this.y-3, healthbarWidth, 3, "lime");
+            }
+        }
+
+        class Bullet 
+        {
+            constructor(x, y, speed, damage) //constructor för bulletens x, y, speed och damage värden
+            {
+                this.x = x;
+                this.y = y;
+                this.speed = speed;
+                this.damage = damage;
+                
+                // längd, höjd och färg på bullet
+                this.width = 5;
+                this.height = 2;
+                this.color = "red";
+            }
+            drawBullet(ctx)
+            {
+                // bulleten går konstant framåt
+                this.x += this.speed
+                // bulleten skapas som en rektangel
+                rectangle(this.x, this.y, this.width, this.height, this.color);
+            }
+        }
+
+        //gör bullets en array, skapar variabeln för timern och säger att en "bullet" är en ny "Bullet" class
+        var bullets = [];
+        var bulletTimer = 0;
+        var bullet = new Bullet;
+        
+        //gör zombies en array, skapar variabeln för timern, säger att en "zombie" är en ny "Zombie" class och skapar variabel för mängden zombies
+        var zombies = [];
+        var zombieTimer = 0;
+        var zombie = new Zombie;
+        var zombieCount = 0;
+
+        //score som ökas när man dödar zombies
+        var score = 0;
+
+        //spelarens start x och y värden samt hastigheten
+        var player = {x: 110, y: totalHeight/2-85, speed: 5};
+        var player2 = {x: 110, y: totalHeight/2+45, speed: 5};
+        
+        //väggens hälsa som minskas när zombien skadar den
+        var wallhealth = 100;
+
+
+        function update()
+        {
+            //bakgrunden
+            fill("black");
+            rectangle(90,90,totalWidth-180,totalHeight-180,"SaddleBrown") //väggen runt mappen
+            rectangle(100,100,totalWidth-200,totalHeight-200,"BurlyWood") //"golvet"
+            rectangle(400, 100, 20, totalHeight-200, "grey") //väggen som zombien ska skada
+            
+            //visar hälsa för väggen
+            rectangle(90, 25, 290, 35, "red")
+            text(100, 50, 20, "Wall health: " + Math.round(wallhealth), "white");
+
+            //visar hur många zombies man dödat
+            rectangle(totalWidth-290, 25, 200, 35, "white")
+            text(totalWidth-280, 50, 20, "Kills: " + score, "black")
+
+            //bilden för spelaren
+            picture(player.x, player.y, "img/playerpicture40.png");
+            
+            //kontroll av spelare (wasd)
+            if(keyboard.d){player.x += player.speed}
+            if(keyboard.a){player.x -= player.speed}
+            if(keyboard.w){player.y -= player.speed}
+            if(keyboard.s){player.y += player.speed}
+
+            //spelaren ska vara fast i rummet
+            if(player.x < 100){player.x += player.speed}
+            if(player.x > totalWidth-140){player.x -= player.speed} 
+            if(player.y < 95){player.y += player.speed}
+            if(player.y > totalHeight-135){player.y -= player.speed}
+
+            //bild för spelare 2
+            picture(player2.x, player2.y, "img/player2picture40.png");
+            
+            //kontroll av spelare (pilar)
+            if(keyboard.right){player2.x += player2.speed}
+            if(keyboard.left){player2.x -= player2.speed}
+            if(keyboard.up){player2.y -= player2.speed}
+            if(keyboard.down){player2.y += player2.speed}
+
+            //spelare 2 ska vara fast i rummet
+            if(player2.x < 100){player2.x += player2.speed}
+            if(player2.x > totalWidth-140){player2.x -= player2.speed} 
+            if(player2.y < 95){player2.y += player2.speed}
+            if(player2.y > totalHeight-135){player2.y -= player2.speed}
+
+            // startvärden zombie, y-värdet och hastigheten slumpas
+            const zombieX = totalWidth-110;
+            const zombieY = random(95, totalHeight-180);
+            const zombieSpeed = random(3,5);
+            const zombieDamage = 0.5;
+            const zombieHealth = 3;
+            const zombieDelay = 40; // tid mellan varje zombie spawn
+
+            // startvärden bullet
+            const bulletX = player.x+40;
+            const bulletY = player.y+22;
+            const bulletSpeed = 10;
+            const bulletDamage = 1;
+            const bulletDelay = 7; // tid mellan varje bullet skjuten
+
+            // spelare 2 behöver andra bullet startvärden
+            const bullet2X = player2.x+40;
+            const bullet2Y = player2.y+22;
+
+            //pushar in zombie i array med en timer, max 5 zombies i taget
+            if(zombieTimer <= 0 && zombieCount < 5)
+            {
+                zombies.push(new Zombie(zombieX, zombieY, zombieSpeed, zombieDamage, zombieHealth));
+                zombieTimer = zombieDelay;
+                zombieCount += 1;
+            }
+            zombieTimer -= 1;
+
+            //foreach funktion för zombies
+            zombies.forEach((zombie) => {
+                //ritar zombien och går åt vänster till den träffar väggen
+                zombie.drawZombie(ctx)
+                
+                //zombie skadar väggen
+                if(zombie.x <= 410){wallhealth -= zombieDamage}
+            });
+            
+            //pushar in bullet i array när man klickar på space med en timer
+            if(bulletTimer <= 0 && keyboard.space)
+            {
+                bullets.push(new Bullet(bulletX, bulletY, bulletSpeed, bulletDamage))
+                playShootSound();
+                bulletTimer = bulletDelay;
+            }
+            bulletTimer -= 1;
+
+            //pushar in bullet i array när man klickar på enter med en timer (spelare 2)
+            if(bulletTimer <= 0 && keyboard.enter)
+            {
+                bullets.push(new Bullet(bullet2X, bullet2Y, bulletSpeed, bulletDamage))
+                playShootSound();
+                bulletTimer = bulletDelay;
+            }
+            bulletTimer -= 1;
+
+            //foreach funktion för bullets
+            bullets.forEach((bullet) =>{
+
+                //ritar bullet och går framåt
+                bullet.drawBullet(ctx);
+
+                //splicar bullets när de går utanför mappen
+                if(bullet.x > totalWidth-100)
+                {
+                    const index = bullets.indexOf(bullet);
+                    bullets.splice(index,1);
+                }
+                
+                //checkar om bulleten träffar en zombie
+                zombies.forEach((zombie) => {
+                    if(zombie.x < bullet.x &&
+                    zombie.x+40 > bullet.x &&
+                    zombie.y < bullet.y &&
+                    zombie.y+40 > bullet.y)
+                    {
+                        playHitSound();
+                        //minskar zombiens hälsa och zombien splicas när hälsan är 0, ökar också sitt "score"
+                        zombie.health -= 1;
+                        if(zombie.health <= 0)
+                        {
+                            playDeadSound();
+                            const indexZ = zombies.indexOf(zombie);
+                            zombies.splice(indexZ, 1);
+                            score += 1;
+                            zombieCount -= 1;
+                        }
+                        //när en bullet träffar en zombie så splicas bulleten
+                        const indexB = bullets.indexOf(bullet);
+                        bullets.splice(indexB, 1);
+                    }
+                });
+            });
+
+            // avslutar spelet när hälsan är 0
+            if(wallhealth <= 0) 
+            {
+                stopUpdate();
+                text(totalWidth/2-200, totalHeight/2, 75, "GAME OVER!", "red")
+            }
+        }
+        // ljudeffekter
+        function playShootSound() // när man skjuter
+        {
+            var audio = new Audio('sounds/laser-sound.mp3');
+            audio.play();
+        }
+        function playHitSound() // när man träffar en zombie
+        {
+            var audio = new Audio('sounds/hit-sound.mp3');
+            audio.play();
+        }
+        function playDeadSound() // när en zombie dör
+        {
+            var audio = new Audio('sounds/dead-sound.mp3');
+            audio.play();
+        }
+        
+    </script>
+</body>
+</html>
